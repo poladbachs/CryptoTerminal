@@ -330,7 +330,7 @@ void login_trading::load(){
     inFile >> password;
     inFile >> balance;
     for(const auto& sym : top_10_symbols){
-        int coin_balance;
+        double coin_balance;
         inFile >> coin_balance;
         coin_balances[sym] = coin_balance;
     }
@@ -569,15 +569,24 @@ void login_trading::sellcoins(){
     }
     double coinPrice = latest_price;
     cout << "\t Price of " << selected_symbol << " : $" << coinPrice << "\n\n";
-    
     double quantity;
     cout << "\t Enter the quantity to sell : ";
     cin >> quantity;
+
+    if(cin.fail() || quantity <= 0){
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << "\t Invalid quantity. Please enter a positive number." << endl;
+        pause_execution();
+        menu();
+        return;
+    }
+
     cout << "\n";
     double total = coinPrice * quantity;
     cout << "\t Total Price : $" << total << "\n\n";
     
-    int available_coins = coin_balances[selected_symbol];
+    double available_coins = coin_balances[selected_symbol];
     
     if (quantity > available_coins){
         cout << "\t Insufficient coins" << endl;
