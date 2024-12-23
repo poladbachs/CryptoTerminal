@@ -1,0 +1,2 @@
+# CryptoSoftware
+Crypto Trading Platform
