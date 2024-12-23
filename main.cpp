@@ -1,6 +1,12 @@
-#include"user.h"
+#include "user.h"
+
 int main(){
-	checking obj;
-	obj.home();
-	return 0;
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    
+    login_trading obj;
+    obj.home();
+    
+    curl_global_cleanup();
+    
+    return 0;
 }
