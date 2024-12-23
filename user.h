@@ -27,8 +27,8 @@ public:
     void forgot();
     void clear_file();
     void menu();
-    int checkbalance();
-    int checkbalance(int amo);
+    void checkbalance();
+    void checkbalance(int amo);
     void checkcoins();
     void withdrawal();
     void deposit();
@@ -42,6 +42,6 @@ class checking : public login_trading {
 public:
     void loadings();
     void showrandom();
-    int showquantity();
-    int showquant();
+    void showquantity();
+    void showquant();
 };
