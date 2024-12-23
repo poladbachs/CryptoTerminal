@@ -1,12 +1,9 @@
 #include "user.h"
 
 vector<string> top_10_symbols = {
-    "BTC", "ETH", "USDT", "BNB", "XRP",
-    "ADA", "DOGE", "USDC", "DOT", "UNI"
+    "BTC", "ETH", "USDT", "SOL", "XRP",
+    "ADA", "AVAX", "LINK", "SUI", "DOT"
 };
-
-// Alpha Vantage API Key
-const string API_KEY = "U6L3NVT5G6QZR485";
 
 map<string, double> crypto_prices;
 
@@ -37,33 +34,54 @@ size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp){
     return size * nmemb;
 }
 
-double fetch_crypto_price(const string& symbol, const string& api_key) {
+string read_api_key(const string& filepath) {
+    ifstream file(filepath);
+    if (!file.is_open()) {
+        cerr << "Error: Unable to open API key file at " << filepath << endl;
+        exit(1);
+    }
+    string api_key;
+    getline(file, api_key);
+    file.close();
+    return api_key;
+}
+
+double fetch_crypto_price(const string& symbol) {
     CURL* curl;
     CURLcode res;
     string readBuffer;
-    string url = "https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=" 
-                + symbol + "&to_currency=USD&apikey=" + api_key;
+    string api_key = read_api_key("api_key.txt");
+    string url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol=" + symbol;
     
     curl = curl_easy_init();
     if(curl) {
+        struct curl_slist *headers = NULL;
+        string header = "X-CMC_PRO_API_KEY: " + api_key;
+        headers = curl_slist_append(headers, header.c_str());
+        headers = curl_slist_append(headers, "Accept: application/json");
+
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
         res = curl_easy_perform(curl);
         if(res != CURLE_OK){
             cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << endl;
+            curl_slist_free_all(headers);
             curl_easy_cleanup(curl);
             return 0.0;
         }
+        curl_slist_free_all(headers);
         curl_easy_cleanup(curl);
     }
     
     try {
         json j = json::parse(readBuffer);
-        if(j.contains("Realtime Currency Exchange Rate")){
-            string rate_str = j["Realtime Currency Exchange Rate"]["5. Exchange Rate"];
-            return stod(rate_str);
+        if(j.contains("data") && j["data"].contains(symbol) && j["data"][symbol].contains("quote") &&
+           j["data"][symbol]["quote"].contains("USD") && j["data"][symbol]["quote"]["USD"].contains("price")){
+            double price = j["data"][symbol]["quote"]["USD"]["price"];
+            return price;
         }
         else{
             cerr << "Error: " << j.dump() << endl;
@@ -485,7 +503,7 @@ void login_trading::buycoins(){
     }
     string selected_symbol = top_10_symbols[ch-1];
     
-    double latest_price = fetch_crypto_price(selected_symbol, API_KEY);
+    double latest_price = fetch_crypto_price(selected_symbol);
     if(latest_price == 0.0){
         cout << "\t Failed to fetch price for " << selected_symbol << "." << endl;
         pause_execution();
@@ -560,7 +578,7 @@ void login_trading::sellcoins(){
     }
     string selected_symbol = top_10_symbols[zh-1];
     
-    double latest_price = fetch_crypto_price(selected_symbol, API_KEY);
+    double latest_price = fetch_crypto_price(selected_symbol);
     if(latest_price == 0.0){
         cout << "\t Failed to fetch price for " << selected_symbol << "." << endl;
         pause_execution();
