@@ -121,7 +121,6 @@ void login_trading::registration(){
     cout << "\n";
     cout << "						 ---Registration page---" << "\n\n";
     cin.ignore();
-    cout << "\t Spaces are not allowed " << "\n\n";
     cout << "\t Enter a username : \t ";
     getline(cin, username);
     cout << endl;
@@ -196,7 +195,6 @@ void login_trading::login(){
     cout << "\n";
     cout << "						    ---Login Page---" << "\n\n";
     cin.ignore();
-    cout << "\t Spaces are not allowed " << "\n\n";
     cout << "\t Enter your username : \t ";
     getline(cin, username);
     cout << endl;
@@ -234,7 +232,6 @@ void login_trading::forgot(){
     cout << "\n";
     cout << " 							---Forgot Page---" << "\n\n";
     cin.ignore();
-    cout << "\t Spaces are not allowed " << endl;
     cout << "\t Enter your username : \t ";
     getline(cin, username);
     string fi = "trad_" + username + ".txt";
@@ -271,7 +268,6 @@ void login_trading::clear_file(){
     cout << " 							---Clear Account---" << "\n\n";
     char ch;
     cin.ignore();
-    cout << "\t Spaces are not allowed " << endl;
     cout << "\t Enter your username : \t ";
     getline(cin, username);
     cout << endl;
@@ -499,9 +495,19 @@ void login_trading::buycoins(){
     double coinPrice = latest_price;
     cout << "\t Price of " << selected_symbol << " : $" << coinPrice << "\n\n";
     
-    int quantity;
+    double quantity;
     cout << "\t Enter the quantity to buy : ";
     cin >> quantity;
+
+    if(cin.fail() || quantity <= 0){
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << "\t Invalid quantity. Please enter a positive number." << endl;
+        pause_execution();
+        menu();
+        return;
+    }
+
     cout << "\n";
     double total = coinPrice * quantity;
     cout << "\t Total Price : $" << total << "\n\n";
@@ -564,7 +570,7 @@ void login_trading::sellcoins(){
     double coinPrice = latest_price;
     cout << "\t Price of " << selected_symbol << " : $" << coinPrice << "\n\n";
     
-    int quantity;
+    double quantity;
     cout << "\t Enter the quantity to sell : ";
     cin >> quantity;
     cout << "\n";
