@@ -57,9 +57,9 @@ public:
     void load();
 
 protected:
-    map<string, int> coin_balances;
-    int balance;
-    int amo;
+    map<string, double> coin_balances;
+    double balance;
+    double amo;
 };
 
 #endif
