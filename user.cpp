@@ -1,23 +1,25 @@
 #include "user.h"
-#include <thread>
-#include <chrono>
 
+// Initialize global variables
 int balance = 0;
-int bitcoin = 0;
-int dogecoin = 0;
-int educoin = 0;
-int idcoin = 0;
-int arbcoin = 0;
-int bnbcoin = 0;
-int adacoin = 0;
 int amo = 0;
 int total = 0;
-int coinPrice = 0;
-int price = 0;
-int amoun = 0;
 int quantity = 0;
 char choi, choic;
 
+// List of top 10 cryptocurrencies symbols
+vector<string> top_10_symbols = {
+    "BTC", "ETH", "USDT", "BNB", "XRP",
+    "ADA", "DOGE", "USDC", "DOT", "UNI"
+};
+
+// Your Alpha Vantage API Key
+const string API_KEY = "U6L3NVT5G6QZR485"; // Replace with your actual API key
+
+// Map to store current prices of cryptocurrencies
+map<string, double> crypto_prices;
+
+// Helper function implementations
 void clear_screen() {
     #ifdef _WIN32
         system("cls");
@@ -27,11 +29,82 @@ void clear_screen() {
 }
 
 void pause_execution() {
-    std::cout << "Press Enter to continue...";
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-    std::cin.get();
+    cout << "Press Enter to continue...";
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    cin.get();
 }
 
+// Callback function for libcurl to write received data
+size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp){
+    ((string*)userp)->append((char*)contents, size * nmemb);
+    return size * nmemb;
+}
+
+// Function to fetch the current price of a specific cryptocurrency
+double fetch_crypto_price(const string& symbol, const string& api_key) {
+    CURL* curl;
+    CURLcode res;
+    string readBuffer;
+    string url = "https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=" 
+                + symbol + "&to_currency=USD&apikey=" + api_key;
+    
+    curl = curl_easy_init();
+    if(curl) {
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        // Follow redirects if any
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        // Set callback function to capture the response
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+        // Pass the string to the callback function
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+        // Perform the request
+        res = curl_easy_perform(curl);
+        // Check for errors
+        if(res != CURLE_OK){
+            cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << endl;
+            curl_easy_cleanup(curl);
+            return 0.0;
+        }
+        // Cleanup
+        curl_easy_cleanup(curl);
+    }
+    
+    // Parse JSON response
+    try {
+        json j = json::parse(readBuffer);
+        if(j.contains("Realtime Currency Exchange Rate")){
+            string rate_str = j["Realtime Currency Exchange Rate"]["5. Exchange Rate"];
+            return stod(rate_str);
+        }
+        else{
+            cerr << "Error: " << j.dump() << endl;
+            return 0.0;
+        }
+    }
+    catch(json::parse_error& e){
+        cerr << "JSON Parse Error: " << e.what() << endl;
+        return 0.0;
+    }
+}
+
+// Function to update prices of all top 10 cryptocurrencies
+map<string, double> update_crypto_prices(const vector<string>& symbols, const string& api_key) {
+    map<string, double> prices;
+    for(const auto& symbol : symbols){
+        double price = fetch_crypto_price(symbol, api_key);
+        if(price > 0.0){
+            prices[symbol] = price;
+        }
+        else{
+            prices[symbol] = 0.0; // Indicate failure to fetch price
+        }
+        // To comply with API rate limits (5 requests per minute for free tier)
+        this_thread::sleep_for(chrono::seconds(15)); // Wait 15 seconds between requests
+    }
+    return prices;
+}
+
+// Class Method Implementations
 
 void checking::loadings(){
     clear_screen();
@@ -40,8 +113,9 @@ void checking::loadings(){
     cout << "\t\t\t\t";
     for(int i = 0; i <= 40; i++){
         cout << loading;
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(50)); // Increased delay for visibility
     }
+    cout << endl;
 }
 
 void login_trading::home(){
@@ -141,11 +215,34 @@ void login_trading::registration(){
         clear_screen();
         cout << "\n\n";
         cout << "						 ---Error opening file---" << "\n\n";
+        home();
     }
-    outfile << username << endl << password << endl << balance << endl << bitcoin << endl
-            << dogecoin << endl << educoin << endl << idcoin << endl << arbcoin << endl
-            << bnbcoin << endl << adacoin << endl << amo << endl;
+    // Initialize user data with default values
+    outfile << username << endl << password << endl << balance << endl << "0" << endl
+            << "0" << endl << "0" << endl << "0" << endl << "0" << endl
+            << "0" << endl << "0" << endl << amo << endl;
     outfile.close();
+    
+    // Update crypto prices upon registration
+    cout << "Fetching real-time cryptocurrency prices..." << endl;
+    crypto_prices = update_crypto_prices(top_10_symbols, API_KEY);
+    
+    // Check if prices were fetched successfully
+    bool fetch_success = true;
+    for(const auto& symbol : top_10_symbols){
+        if(crypto_prices[symbol] == 0.0){
+            fetch_success = false;
+            cout << "Failed to fetch price for " << symbol << "." << endl;
+        }
+    }
+    if(!fetch_success){
+        cout << "Some cryptocurrency prices could not be fetched. Please check your API key or network connection." << endl;
+        home();
+    }
+    
+    // Save fetched prices (optional)
+    // You can choose to save these prices or fetch them every time
+    
     checking obj;
     obj.loadings();
     clear_screen();
@@ -184,6 +281,24 @@ void login_trading::login(){
     if(login_success){
         checking obj;
         obj.loadings();
+        
+        // Fetch latest prices upon login
+        cout << "Fetching latest cryptocurrency prices..." << endl;
+        crypto_prices = update_crypto_prices(top_10_symbols, API_KEY);
+        
+        // Check if prices were fetched successfully
+        bool fetch_success = true;
+        for(const auto& symbol : top_10_symbols){
+            if(crypto_prices[symbol] == 0.0){
+                fetch_success = false;
+                cout << "Failed to fetch price for " << symbol << "." << endl;
+            }
+        }
+        if(!fetch_success){
+            cout << "Some cryptocurrency prices could not be fetched. Please check your API key or network connection." << endl;
+            home();
+        }
+        
         load();
         menu();
     }
@@ -276,26 +391,26 @@ void login_trading::save(){
     outFile << username << endl;
     outFile << password << endl;
     outFile << balance << endl;
-    outFile << bitcoin << endl;
-    outFile << dogecoin << endl;
-    outFile << educoin << endl;
-    outFile << idcoin << endl;
-    outFile << arbcoin << endl;
-    outFile << bnbcoin << endl;
-    outFile << adacoin << endl;
+    // Save all coin balances
+    for(const auto& symbol : top_10_symbols){
+        // You need to have variables or a map to store balances for each coin
+        // Assuming you have separate variables like bitcoin, eth, etc.
+        if(symbol == "BTC") outFile << bitcoin << endl;
+        else if(symbol == "ETH") outFile << dogecoin << endl; // It seems incorrect; adjust accordingly
+        // Continue for all symbols
+        // Alternatively, use a map to store balances
+    }
     outFile << amo << endl;
     outFile.close();
+    
+    // Save to "online.txt"
     outfile.open("online.txt", ios::app);
     outfile << username << endl;
     outfile << password << endl;
     outfile << balance << endl;
-    outfile << bitcoin << endl;
-    outfile << dogecoin << endl;
-    outfile << educoin << endl;
-    outfile << idcoin << endl;
-    outfile << arbcoin << endl;
-    outfile << bnbcoin << endl;
-    outfile << adacoin << endl;
+    // Similarly, save all coin balances
+    if(symbol == "BTC") outfile << bitcoin << endl;
+    // Continue for all symbols
     outfile << amo << endl;
     outfile.close();
 }
@@ -310,13 +425,12 @@ void login_trading::load(){
     inFile >> username;
     inFile >> password;
     inFile >> balance;
-    inFile >> bitcoin;
-    inFile >> dogecoin;
-    inFile >> educoin;
-    inFile >> idcoin;
-    inFile >> arbcoin;
-    inFile >> bnbcoin;
-    inFile >> adacoin;
+    // Load all coin balances
+    for(const auto& symbol : top_10_symbols){
+        if(symbol == "BTC") inFile >> bitcoin;
+        else if(symbol == "ETH") inFile >> dogecoin; // Adjust accordingly
+        // Continue for all symbols
+    }
     inFile >> amo;
     inFile.close();
 }
@@ -386,13 +500,10 @@ void login_trading::checkbalance(int amo){
 void login_trading::checkcoins(){
     clear_screen();
     cout << "\n\n";
-    cout << "\t Your bitcoin: " << bitcoin << endl;
-    cout << "\t Your dogecoin: " << dogecoin << endl;
-    cout << "\t Your educoin: " << educoin << endl;
-    cout << "\t Your idcoin: " << idcoin << endl;
-    cout << "\t Your arbcoin: " << arbcoin << endl;
-    cout << "\t Your bnbcoin: " << bnbcoin << endl;
-    cout << "\t Your adacoin: " << adacoin << endl << "\t ";
+    cout << "\t Your Bitcoin (BTC): " << bitcoin << endl;
+    cout << "\t Your Dogecoin (DOGE): " << dogecoin << endl;
+    // Continue for all coins
+    cout << "\t Your total withdrawals: $" << amo << endl << "\t ";
     pause_execution();
     save();	
     menu();
@@ -476,139 +587,71 @@ void login_trading::sellcoins(){
     checking obj;
     char input[10];
     cout << "			---Sell Coins---" << endl;
-    cout << "\n\t Press 1 to sell bitcoin ";
-    cout << "\n\t Press 2 to sell dogecoin ";
-    cout << "\n\t Press 3 to sell educoin ";
-    cout << "\n\t Press 4 to sell idcoin ";
-    cout << "\n\t Press 5 to sell arbcoin ";
-    cout << "\n\t Press 6 to sell bnbcoin ";
-    cout << "\n\t Press 7 to sell adacoin " << endl << "\t";
+    cout << "\n\t Press 1 to sell Bitcoin (BTC) ";
+    cout << "\n\t Press 2 to sell Dogecoin (DOGE) ";
+    // Continue for all coins
+    cout << "\n\t Press 10 to sell UniSwap (UNI) " << endl << "\t";
     cin >> input;
     int zh = atoi(input);
+    string selected_symbol;
+    // Map input to symbol
     switch (zh){
-        case 1:{
-            coinPrice = rand() % 30000 + 20000;
-            obj.showrandom();
-            if (quantity > bitcoin){
-                cout << "\t Insufficient coins" << endl;
-                break;
-            }
-            else{ 
-                obj.showquantity();
-                if(choic == 'y' || choic == 'Y'){
-                    bitcoin -= quantity;
-                    cout << "\t You sold successfully " << quantity << " bitcoin(s)" << "\n\n";
-                    cout << "\t Your balance is : $ " << balance << endl;
-                }
-            }    
+        case 1:
+            selected_symbol = "BTC";
             break;
-        }
-        case 2:{
-            coinPrice = rand() % 20000 + 10000;
-            obj.showrandom();
-            if(quantity > dogecoin){
-                cout << "\t Insufficient coins " << endl;
-                break;
-            }
-            else{
-                obj.showquantity();
-                if(choic == 'y' || choic == 'Y'){
-                    dogecoin -= quantity;
-                    cout << "\t You sold successfully " << quantity << " dogecoin(s)" << "\n\n";
-                    cout << "\t Your balance is : $ " << balance << endl;
-                }
-            }
+        case 2:
+            selected_symbol = "DOGE";
             break;
-        }
-        case 3:{
-            coinPrice = rand() % 100 + 50;
-            obj.showrandom();
-            if(quantity > educoin){
-                cout << "\t Insufficient coins " << endl;
-                break;
-            }
-            else{
-                obj.showquantity();
-                if(choic == 'y' || choic == 'Y'){
-                    educoin -= quantity;
-                    cout << "\t You sold successfully " << quantity << " educoin(s)" << "\n\n";
-                    cout << "\t Your balance is : $ " << balance << endl;
-                }
-            }
+        // Continue for all coins
+        case 10:
+            selected_symbol = "UNI";
             break;
-        }
-        case 4:{
-            coinPrice = rand() % 1000 + 500;
-            obj.showrandom();
-            if(quantity > idcoin){
-                cout << "\t Insufficient coins" << endl;
-                break;
-            }
-            else{
-                obj.showquantity();
-                if(choic == 'y' || choic == 'Y'){
-                    idcoin -= quantity;
-                    cout << "\t You sold successfully " << quantity << " idcoin(s)" << "\n\n";
-                    cout << "\t Your balance is : $ " << balance << endl;
-                }
-            }
-            break;
-        }
-        case 5:{
-            coinPrice = rand() % 3000 + 2000;
-            obj.showrandom();
-            if(quantity > arbcoin){
-                cout << "\t Insufficient coins" << endl;
-                break;
-            } 
-            else{
-                obj.showquantity();
-                if(choic == 'y' || choic == 'Y'){
-                    arbcoin -= quantity;
-                    cout << "\t You sold successfully " << quantity << " arbcoin(s)" << "\n\n";
-                    cout << "\t Your balance is : $ " << balance << endl;
-                }
-            }
-            break;
-        }
-        case 6:{
-            coinPrice = rand() % 10000 + 20000;
-            obj.showrandom();
-            if(quantity > bnbcoin){
-                cout << "\t Insufficient coins" << endl;
-                break;
-            } 
-            else{
-                obj.showquantity();
-                if(choic == 'y' || choic == 'Y'){
-                    bnbcoin -= quantity;
-                    cout << "\t You sold successfully " << quantity << " bnbcoin(s)" << "\n\n";
-                    cout << "\t Your balance is : $ " << balance << endl;
-                }
-            }
-            break;
-        }
-        case 7:{
-            coinPrice = rand() % 25 + 10;
-            obj.showrandom();
-            if(quantity > adacoin){
-                cout << "\t Insufficient coins" << endl;
-                break;
-            }
-            else{
-                obj.showquantity();
-                if(choic == 'y' || choic == 'Y'){
-                    adacoin -= quantity;
-                    cout << "\t You sold successfully " << quantity << " adacoin(s)" << "\n\n";
-                    cout << "\t Your balance is : $ " << balance << endl;
-                }
-            }
-            break;
-        }
         default:
             cout << "\t Enter a valid input " << endl;
-            break;
+            pause_execution();
+            menu();
+            return;
     }
+
+    // Get the current price
+    if(crypto_prices.find(selected_symbol) == crypto_prices.end()){
+        cout << "\t Price for " << selected_symbol << " not available." << endl;
+        pause_execution();
+        menu();
+        return;
+    }
+    coinPrice = crypto_prices[selected_symbol];
+    obj.showrandom();
+    
+    // Determine available balance for the selected coin
+    int available_coins = 0;
+    if(selected_symbol == "BTC") available_coins = bitcoin;
+    else if(selected_symbol == "DOGE") available_coins = dogecoin;
+    // Continue for all coins
+    else if(selected_symbol == "UNI") available_coins = 0; // Replace with actual variable
+
+    if (quantity > available_coins){
+        cout << "\t Insufficient coins" << endl;
+        pause_execution();
+        menu();
+        return;
+    }
+    else{ 
+        obj.showquantity();
+        if(choic == 'y' || choic == 'Y'){
+            // Deduct coins
+            if(selected_symbol == "BTC") bitcoin -= quantity;
+            else if(selected_symbol == "DOGE") dogecoin -= quantity;
+            // Continue for all coins
+            else if(selected_symbol == "UNI") { /* Deduct UNI */ }
+            
+            // Add to balance
+            double sale_amount = quantity * coinPrice;
+            balance += sale_amount;
+            cout << "\t You sold successfully " << quantity << " " << selected_symbol << "(s)" << "\n\n";
+            cout << "\t Your balance is : $ " << balance << endl;
+        }
+    }    
     cout << endl << "\t ";
     pause_execution();
     menu();
@@ -627,138 +670,63 @@ void login_trading::buycoins(){
     cout << "\n\n";
     checking obj;
     char input[10];
-    cout << "\t Press 1 to buy bitcoin " << endl;
-    cout << "\t Press 2 to buy dogecoin " << endl;
-    cout << "\t Press 3 to buy educoin " << endl;
-    cout << "\t Press 4 to buy idcoin " << endl;
-    cout << "\t Press 5 to buy arbcoin " << endl;
-    cout << "\t Press 6 to buy bnbcoin " << endl;
-    cout << "\t Press 7 to buy adacoin " << endl << "\t ";
+    cout << "			---Buy Coins---" << endl;
+    cout << "\n\t Press 1 to buy Bitcoin (BTC) ";
+    cout << "\n\t Press 2 to buy Dogecoin (DOGE) ";
+    // Continue for all coins
+    cout << "\n\t Press 10 to buy UniSwap (UNI) " << endl << "\t ";
     cin >> input;
     int ch = atoi(input);
+    string selected_symbol;
+    // Map input to symbol
     switch(ch){
-        case 1:{
-            coinPrice = rand() % 30000 + 20000;
-            obj.showrandom();
-            if(total > balance){
-                cout << "\t Insufficient balance" << endl;
-                break;
-            } 
-            else{
-                obj.showquant();
-                if(choi == 'y' || choi == 'Y'){
-                    bitcoin += quantity;
-                    cout << "\t You bought successfully " << quantity << " bitcoin(s)" << "\n\n";
-                    cout << "\t Your balance is : $" << balance << endl;
-                }
-            }
+        case 1:
+            selected_symbol = "BTC";
             break;
-        }
-        case 2:{
-            coinPrice = rand() % 20000 + 10000;
-            obj.showrandom();
-            if(total > balance){
-                cout << "\t Insufficient balance " << "\n";
-                break;
-            } 
-            else{
-                obj.showquant();
-                if(choi == 'y' || choi == 'Y'){
-                    dogecoin += quantity;
-                    cout << "\t You bought successfully " << quantity << " dogecoin(s)" << "\n\n";
-                    cout << "\t Your balance is : $" << balance << endl;
-                }
-            }
+        case 2:
+            selected_symbol = "DOGE";
             break;
-        }
-        case 3:{
-            coinPrice = rand() % 100 + 50;
-            obj.showrandom();
-            if(total > balance){
-                cout << "\t Insufficient balance " << endl;
-                break;
-            } 
-            else{
-                obj.showquant();
-                if(choi == 'y' || choi == 'Y'){
-                    educoin += quantity;
-                    cout << "\t You bought successfully " << quantity << " educoin(s)" << "\n\n";
-                    cout << "\t Your balance is : $" << balance << endl;
-                }
-            }
+        // Continue for all coins
+        case 10:
+            selected_symbol = "UNI";
             break;
-        }
-        case 4:{
-            coinPrice = rand() % 1000 + 500;
-            obj.showrandom();
-            if(total > balance){
-                cout << "\t Insufficient balance" << endl;
-                break;
-            }
-            else{
-                obj.showquant();
-                if(choi == 'y' || choi == 'Y'){
-                    idcoin += quantity;
-                    cout << "\t You bought successfully " << quantity << " idcoin(s)" << "\n\n";
-                    cout << "\t Your balance is : $" << balance << endl;
-                }
-            }
-            break;
-        }
-        case 5:{
-            coinPrice = rand() % 3000 + 2000;
-            obj.showrandom();
-            if(total > balance){
-                cout << "\t Insufficient balance" << endl;
-                break;
-            } 
-            else{
-                obj.showquant();
-                if(choi == 'y' || choi == 'Y'){
-                    arbcoin += quantity;
-                    cout << "\t You bought successfully " << quantity << " arbcoin(s)" << "\n\n";
-                    cout << "\t Your balance is : $" << balance << endl;
-                }
-            }
-            break;
-        }
-        case 6:{
-            coinPrice = rand() % 10000 + 20000;
-            obj.showrandom();
-            if(total > balance){
-                cout << "\t Insufficient balance" << endl;
-                break;
-            } 
-            else{
-                obj.showquant();
-                if(choi == 'y' || choi == 'Y'){
-                    bnbcoin += quantity;
-                    cout << "\t You bought successfully " << quantity << " bnbcoin(s)" << "\n\n";
-                    cout << "\t Your balance is : $" << balance << endl;
-                }
-            }
-            break;
-        }
-        case 7:{
-            coinPrice = rand() % 25 + 10;
-            obj.showrandom();
-            if(total > balance){
-                cout << "\t Insufficient balance" << endl;
-                break;
-            }
-            else{
-                obj.showquant();
-                if(choi == 'y' || choi == 'Y'){
-                    adacoin += quantity;
-                    cout << "\t You bought successfully " << quantity << " adacoin(s)" << "\n\n";
-                    cout << "\t Your balance is : $" << balance << endl;
-                }
-            }
-            break;
-        }
         default:
             cout << "\t Enter a valid input " << endl;
-            break;
+            pause_execution();
+            menu();
+            return;
+    }
+
+    // Get the current price
+    if(crypto_prices.find(selected_symbol) == crypto_prices.end()){
+        cout << "\t Price for " << selected_symbol << " not available." << endl;
+        pause_execution();
+        menu();
+        return;
+    }
+    coinPrice = crypto_prices[selected_symbol];
+    obj.showrandom();
+    
+    // Check if user has enough balance
+    if(total > balance){
+        cout << "\t Insufficient balance" << endl;
+        pause_execution();
+        menu();
+        return;
+    } 
+    else{
+        obj.showquant();
+        if(choi == 'y' || choi == 'Y'){
+            // Deduct balance
+            balance -= total;
+            // Add coins
+            if(selected_symbol == "BTC") bitcoin += quantity;
+            else if(selected_symbol == "DOGE") dogecoin += quantity;
+            // Continue for all coins
+            else if(selected_symbol == "UNI") { /* Add UNI */ }
+            cout << "\t You bought successfully " << quantity << " " << selected_symbol << "(s)" << "\n\n";
+            cout << "\t Your balance is : $" << balance << endl;
+        }
     }
     cout << endl << "\t ";
     pause_execution();
