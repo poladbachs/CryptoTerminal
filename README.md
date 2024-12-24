@@ -1,4 +1,6 @@
-![ezgif-4-2bb16ef510](https://github.com/user-attachments/assets/94dba493-d932-48b4-a838-e7d124c1e4e5)
+![ezgif-3-3f2ba8cd07](https://github.com/user-attachments/assets/dc483d06-572e-4fda-a2e9-0547c98e57cc)
+<img width="400" alt="cmcHomepageLogo" src="https://github.com/user-attachments/assets/2917fb6f-7c2f-447e-908e-0f6abc177032" />
+
 # CryptoSoftware 
 Crypto Trading Platform
 
