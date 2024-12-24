@@ -28,3 +28,17 @@ A C++ console-based crypto trading application that uses the CoinMarketCap API t
 
 - **Secure API Key Management**:
   - Reads API key from `api_key.txt` (ignored in `.gitignore`).
+
+## 1. Add API Key
+
+Create a file named `api_key.txt` in the root directory.  
+Add your CoinMarketCap API key in the txt file.
+
+## 2. Install Dependencies
+Ensure libcurl is installed on your system.
+
+## 3. Build and Run the Application
+`g++ main.cpp user.cpp -o main -lcurl -std=c++11`
+
+`./main`
+
