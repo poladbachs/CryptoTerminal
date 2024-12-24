@@ -2,7 +2,7 @@
 # CryptoSoftware 
 Crypto Trading Platform
 
-A C++ console-based crypto trading application that uses the CoinMarketCap API to fetch live cryptocurrency prices. Users can register, log in, buy, sell, and check their coin balances securely.
+A C++ console-based crypto trading application that uses the CoinMarketCap API to fetch live top 10 cryptocurrency prices such as BTC, ETH, Solana and Avalanche. Users can register, log in, buy, sell, and check their coin balances securely.
 
 ---
 
