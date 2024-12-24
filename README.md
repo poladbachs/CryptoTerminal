@@ -1,4 +1,4 @@
-![ezgif-4-8b673b9aef](https://github.com/user-attachments/assets/a6072616-618b-422b-b684-6fb87faa3b43)
+![ezgif-4-2bb16ef510](https://github.com/user-attachments/assets/94dba493-d932-48b4-a838-e7d124c1e4e5)
 # CryptoSoftware 
 Crypto Trading Platform
 
