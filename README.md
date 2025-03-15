@@ -1,9 +1,9 @@
 ![ezgif-3-3f2ba8cd07](https://github.com/user-attachments/assets/dc483d06-572e-4fda-a2e9-0547c98e57cc)
 <img width="400" alt="cmcHomepageLogo" src="https://github.com/user-attachments/assets/2917fb6f-7c2f-447e-908e-0f6abc177032" />
 
-# CryptoSoftware 
+# Crypto Terminal
 
-A C++ console-based crypto trading application that uses the CoinMarketCap API to fetch live top 10 cryptocurrency prices such as BTC, ETH, Solana and Avalanche. Users can register, log in, buy, sell, and check their coin balances securely.
+A C++ console-based crypto trading platform that uses the CoinMarketCap API to fetch live top 10 cryptocurrency prices such as BTC, ETH, Solana and Avalanche. Users can register, log in, buy, sell, and check their coin balances securely.
 
 ---
 
